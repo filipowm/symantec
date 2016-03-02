@@ -1,5 +1,8 @@
 package com.mfilipo.symantec.spe.engine;
 
+import com.google.common.base.MoreObjects;
+import com.mfilipo.symantec.spe.utils.FileUtils;
+import org.apache.commons.io.output.CountingOutputStream;
 import org.apache.commons.io.output.NullOutputStream;
 
 import java.io.*;
@@ -7,15 +10,15 @@ import java.io.*;
 /**
  * Created by filipowm on 2016-03-01.
  */
-public class ScanRequest {
+public final class ScanRequest {
 
     private boolean removeAfterScan;
     private File input;
-    private OutputStream output;
+    private CountingOutputStream output;
 
     private ScanRequest(File input, OutputStream output, boolean removeAfterScan) {
         this.input = input;
-        this.output = output;
+        this.output = new CountingOutputStream(output);
         this.removeAfterScan = removeAfterScan;
     }
 
@@ -25,6 +28,14 @@ public class ScanRequest {
 
     public File getInput() {
         return input;
+    }
+
+    public long getInputSize() {
+        return input.length();
+    }
+
+    public long getOutpusSize() {
+        return output.getByteCount();
     }
 
     public OutputStream getOutput() {
@@ -38,6 +49,7 @@ public class ScanRequest {
     static class ScanRequestBuilder {
 
         private boolean removeAfterScan = false;
+        private boolean blockRemoveAfterScan = false;
         private File input;
         private OutputStream output;
 
@@ -53,12 +65,16 @@ public class ScanRequest {
         }
 
         public ScanRequestBuilder from(InputStream inputStream) throws IOException {
-            removeAfterScan = true;
+            if (! blockRemoveAfterScan) {
+                removeAfterScan = true;
+            }
             return from(FileUtils.toTempFile(inputStream));
         }
 
         public ScanRequestBuilder from(byte[] bytes) throws IOException {
-            removeAfterScan = true;
+            if (! blockRemoveAfterScan) {
+                removeAfterScan = true;
+            }
             return from(FileUtils.toTempFile(bytes));
         }
 
@@ -75,6 +91,12 @@ public class ScanRequest {
             return this;
         }
 
+        public ScanRequestBuilder removeAfterScan(boolean removeAfterScan) {
+            this.removeAfterScan = removeAfterScan;
+            this.blockRemoveAfterScan = true;
+            return this;
+        }
+
         public ScanRequest build() {
             if (input == null) {
                 throw new NullPointerException("input can't be null");
@@ -87,6 +109,16 @@ public class ScanRequest {
 
     }
 
-
+    @Override
+    public String toString() {
+        CountingOutputStream cos = new CountingOutputStream(output);
+        return MoreObjects.toStringHelper(this)
+                .add("inputFile", input.getAbsolutePath())
+                .add("inputSize", getInputSize())
+                .add("outputSize", getOutpusSize())
+                .add("removeAfterScan", removeAfterScan)
+                .omitNullValues()
+                .toString();
+    }
 
 }

@@ -1,4 +1,4 @@
-package com.mfilipo.symantec.spe.engine;
+package com.mfilipo.symantec.spe.utils;
 
 import com.google.common.io.Files;
 

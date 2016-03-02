@@ -1,10 +1,10 @@
 package com.mfilipo.symantec.spe.event;
 
+import com.mfilipo.symantec.spe.engine.ScanRequest;
 import com.symantec.scanengine.api.Result;
 import com.symantec.scanengine.api.ResultStatus;
 import com.symantec.scanengine.api.ThreatInfo;
 
-import java.io.File;
 import java.util.Arrays;
 import java.util.List;
 
@@ -15,13 +15,8 @@ public class ScanSuccessEvent extends AntivirusEvent {
 
     private final Result result;
 
-    public ScanSuccessEvent(File source, Result result) {
-        super(source);
-        this.result = result;
-    }
-
-    public ScanSuccessEvent(String source, Result result) {
-        super(source);
+    public ScanSuccessEvent(ScanRequest request, Result result) {
+        super(request);
         this.result = result;
     }
 

@@ -1,32 +1,30 @@
 package com.mfilipo.symantec.spe.event;
 
+import com.mfilipo.symantec.spe.engine.ScanRequest;
+import com.mfilipo.symantec.spe.exception.ScanFailedException;
 import com.symantec.scanengine.api.ErrorCode;
-import com.symantec.scanengine.api.ScanException;
-
-import java.io.File;
 
 /**
  * Created by filipowm on 2016-03-01.
  */
 public class ScanFailureEvent extends AntivirusEvent {
 
-    private final ScanException exception;
+    private final ScanFailedException exception;
 
-    public ScanFailureEvent(File source, ScanException exception) {
-        super(source);
+    public ScanFailureEvent(ScanRequest request, ScanFailedException exception) {
+        super(request);
         this.exception = exception;
     }
 
-    public ScanFailureEvent(String source, ScanException exception) {
-        super(source);
-        this.exception = exception;
-    }
-
-    public ScanException getException() {
+    public ScanFailedException getException() {
         return exception;
     }
 
     public ErrorCode getErrorCode() {
-        return exception.getExceptionCode();
+        return exception.getErrorCode().orNull();
+    }
+
+    public ScanRequest getScanRequest() {
+        return (ScanRequest) source;
     }
 }

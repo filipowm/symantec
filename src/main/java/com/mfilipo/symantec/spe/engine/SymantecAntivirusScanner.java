@@ -7,21 +7,22 @@ import com.mfilipo.symantec.spe.event.AntivirusListener;
 import com.mfilipo.symantec.spe.event.ScanFailureEvent;
 import com.mfilipo.symantec.spe.event.ScanSuccessEvent;
 import com.mfilipo.symantec.spe.exception.AntivirusException;
+import com.mfilipo.symantec.spe.exception.ScanFailedException;
+import com.mfilipo.symantec.spe.utils.FileUtils;
 import com.symantec.scanengine.api.Result;
 import com.symantec.scanengine.api.ScanEngine;
 import com.symantec.scanengine.api.ScanException;
 import com.symantec.scanengine.api.StreamScanRequest;
-import org.apache.commons.io.output.NullOutputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import java.io.*;
+import java.io.File;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.UUID;
 
 /**
  * Created by filipowm on 2016-02-26.
@@ -40,14 +41,14 @@ public class SymantecAntivirusScanner implements AntivirusScanner {
     }
 
     @Autowired
-    public SymantecAntivirusScanner(AntivirusConfig antivirusConfig, AntivirusListener... listeners) {
-        this(antivirusConfig, Arrays.asList(listeners));
+    public SymantecAntivirusScanner(AntivirusConfig antivirusConfig, AntivirusListener... antivirusListeners) {
+        this(antivirusConfig, Arrays.asList(antivirusListeners));
     }
 
     @Autowired
-    public SymantecAntivirusScanner(AntivirusConfig antivirusConfig, List<AntivirusListener> listeners) {
+    public SymantecAntivirusScanner(AntivirusConfig antivirusConfig, List<AntivirusListener> antivirusListeners) {
         this.antivirusConfig = antivirusConfig;
-        eventDispatcher = new EventDispatcher(listeners);
+        eventDispatcher = new EventDispatcher(antivirusListeners);
         try {
             LOG.debug("Initializing Symantec ScanEngine");
             this.engine = prepareScanEngine();
@@ -56,7 +57,7 @@ public class SymantecAntivirusScanner implements AntivirusScanner {
             LOG.error("Scan engine initialization failed with parameters:\nhost: {}\nport: {}\nreadWriteTime: {}\nfailRetryTime: {}",
                     antivirusConfig.getHost(), antivirusConfig.getPort(), antivirusConfig.getReadWriteTime(), antivirusConfig.getFailRetryTime());
             LOG.error(e.getMessage(), e);
-            throw new AntivirusException();
+            throw new AntivirusException("Scan engine initialization failed", e);
         }
     }
 
@@ -73,144 +74,48 @@ public class SymantecAntivirusScanner implements AntivirusScanner {
     }
 
     @Override
-    public Optional<Result> scan(File file) throws IOException {
-        return scan(file, new NullOutputStream());
-    }
-
-    @Override
-    public Optional<Result> scan(File file, OutputStream saveStream) throws IOException {
+    public Optional<Result> scan(ScanRequest scanRequest) throws AntivirusException, IOException {
         Result result = null;
         if(antivirusConfig.isEnabled()) {
 //            init();
-            File tmpFile = File.createTempFile(UUID.randomUUID().toString(), ".tmp");
+            File tmpFile = null;
             try {
-                StreamScanRequest scanRequest = engine.createStreamScanRequest(
-                        file.getAbsolutePath(),
+                tmpFile = FileUtils.createTempFile();
+                StreamScanRequest sr = engine.createStreamScanRequest(
+                        scanRequest.getInput().getAbsolutePath(),
                         tmpFile.getAbsolutePath(),
-                        saveStream,
+                        scanRequest.getOutput(),
                         antivirusConfig.getPolicy(),
                         antivirusConfig.isExtendedInfo()
                 );
 
-                result = scanRequest.scanFile();
-                eventDispatcher.dispatch(new ScanSuccessEvent(file, result));
-            } catch (ScanException e) {
+                result = sr.scanFile();
+                eventDispatcher.dispatch(new ScanSuccessEvent(scanRequest, result));
+            } catch (ScanException | IOException e) {
                 LOG.error("Error while scanning file for infections", e);
-                eventDispatcher.dispatch(new ScanFailureEvent(file, e));
+                ScanFailedException exception = new ScanFailedException("Error while scanning file for infections", e, scanRequest);
+                eventDispatcher.dispatch(new ScanFailureEvent(scanRequest, exception));
+                throw exception;
             } finally {
-                tmpFile.delete();
-            }
-        }
-        return Optional.fromNullable(result);
-    }
-
-    public Optional<Result> scan(File file, OutputStream saveStream, boolean removeAfterScan) throws IOException {
-        Result result = null;
-        if(antivirusConfig.isEnabled()) {
-//            init();
-            File tmpFile = File.createTempFile(UUID.randomUUID().toString(), ".tmp");
-            try {
-                StreamScanRequest scanRequest = engine.createStreamScanRequest(
-                        file.getAbsolutePath(),
-                        tmpFile.getAbsolutePath(),
-                        saveStream,
-                        antivirusConfig.getPolicy(),
-                        antivirusConfig.isExtendedInfo()
-                );
-
-                result = scanRequest.scanFile();
-                eventDispatcher.dispatch(new ScanSuccessEvent(file, result));
-            } catch (ScanException e) {
-                LOG.error("Error while scanning file for infections", e);
-                eventDispatcher.dispatch(new ScanFailureEvent(file, e));
-            } finally {
-                if (removeAfterScan) {
-                    file.delete();
+                if (scanRequest.isRemoveAfterScan()) {
+                    scanRequest.getInput().delete();
                 }
-                tmpFile.delete();
-            }
+                if (tmpFile != null) {
+                    tmpFile.delete();
+                }
+        }
         }
         return Optional.fromNullable(result);
-    }
-
-    @Override
-    public Optional<Result> scan(File file, File saveFile) throws IOException {
-        return scan(file, new FileOutputStream(saveFile));
-    }
-
-    @Override
-    public Optional<Result> scan(File file, String savePath) throws IOException {
-        return scan(file, new FileOutputStream(savePath));
-    }
-
-    @Override
-    public Optional<Result> scan(String path) throws IOException {
-        return scan(new File(path));
-    }
-
-    @Override
-    public Optional<Result> scan(String path, OutputStream saveStream) throws IOException {
-        return scan(new File(path), saveStream);
-    }
-
-    @Override
-    public Optional<Result> scan(String path, File saveFile) throws IOException {
-        return scan(new File(path), saveFile);
-    }
-
-    @Override
-    public Optional<Result> scan(String path, String savePath) throws IOException {
-        return scan(new File(path), savePath);
-    }
-
-    @Override
-    public Optional<Result> scan(InputStream stream) {
-        return null;
-    }
-
-    @Override
-    public Optional<Result> scan(InputStream stream, OutputStream saveStream) {
-        return scan(FileUtils.toTempFile(stream));
-    }
-
-    @Override
-    public Optional<Result> scan(InputStream stream, File saveFile) {
-        return null;
-    }
-
-    @Override
-    public Optional<Result> scan(InputStream stream, String savePath) {
-        return null;
-    }
-
-    @Override
-    public Optional<Result> scan(byte[] bytes) {
-        return null;
-    }
-
-    @Override
-    public Optional<Result> scan(byte[] bytes, OutputStream saveStream) {
-        return null;
-    }
-
-    @Override
-    public Optional<Result> scan(byte[] bytes, File saveFile) {
-        return null;
-    }
-
-    @Override
-    public Optional<Result> scan(byte[] bytes, String savePath) {
-        return null;
     }
 
     private class EventDispatcher {
         private final List<AntivirusListener> antivirusListeners;
 
-        EventDispatcher(List<AntivirusListener> listeners) {
+        private EventDispatcher(List<AntivirusListener> listeners) {
             this.antivirusListeners = listeners;
         }
 
-        void dispatch(AntivirusEvent event) {
+        private void dispatch(AntivirusEvent event) {
             for (AntivirusListener listener : antivirusListeners) {
                 listener.onApplicationEvent(event);
             }
