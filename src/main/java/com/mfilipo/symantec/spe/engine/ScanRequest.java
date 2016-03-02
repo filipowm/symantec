@@ -1,8 +1,8 @@
 package com.mfilipo.symantec.spe.engine;
 
-import java.io.File;
-import java.io.InputStream;
-import java.io.OutputStream;
+import org.apache.commons.io.output.NullOutputStream;
+
+import java.io.*;
 
 /**
  * Created by filipowm on 2016-03-01.
@@ -13,18 +13,22 @@ public class ScanRequest {
     private File input;
     private OutputStream output;
 
-
-    public static ScanRequest from(String path) {
-
+    private ScanRequest(File input, OutputStream output, boolean removeAfterScan) {
+        this.input = input;
+        this.output = output;
+        this.removeAfterScan = removeAfterScan;
     }
-    public static ScanRequest from(File file) {
 
+    public boolean isRemoveAfterScan() {
+        return removeAfterScan;
     }
-    public static ScanRequest from(InputStream inputStream) {
 
+    public File getInput() {
+        return input;
     }
-    public static ScanRequest from(byte[] bytes) {
 
+    public OutputStream getOutput() {
+        return output;
     }
 
     public static ScanRequestBuilder builder() {
@@ -33,69 +37,54 @@ public class ScanRequest {
 
     static class ScanRequestBuilder {
 
-        private final boolean removeAfterScan;
+        private boolean removeAfterScan = false;
+        private File input;
+        private OutputStream output;
 
-        public ScanRequestBuilder(boolean removeAfterScan) {
-            this.removeAfterScan = removeAfterScan;
+        private ScanRequestBuilder() { }
+
+        public ScanRequestBuilder from(String path) {
+            return from(new File(path));
         }
 
-        public ScanRequestBuilder() {
-            this(false);
+        public ScanRequestBuilder from(File file) {
+            this.input = file;
+            return this;
         }
 
-        public ScanRequestFrom from(String path) {
-
+        public ScanRequestBuilder from(InputStream inputStream) throws IOException {
+            removeAfterScan = true;
+            return from(FileUtils.toTempFile(inputStream));
         }
 
-        public ScanRequestFrom from(File file) {
-
+        public ScanRequestBuilder from(byte[] bytes) throws IOException {
+            removeAfterScan = true;
+            return from(FileUtils.toTempFile(bytes));
         }
 
-        public ScanRequestFrom from(InputStream inputStream) {
-
+        public ScanRequestBuilder to(String path) throws FileNotFoundException {
+            return to(new FileOutputStream(path));
         }
 
-        public ScanRequestFrom from(byte[] bytes) {
-
+        public ScanRequestBuilder to(File file) throws FileNotFoundException {
+            return to(new FileOutputStream(file));
         }
 
-    }
-    class ScanRequestFrom {
-
-        private final boolean removeAfterScan;
-        private final File from;
-
-        public ScanRequestTo to(String path) {
-            return ScanRequestTo
+        public ScanRequestBuilder to(OutputStream outputStream) {
+            this.output = outputStream;
+            return this;
         }
 
-        public ScanRequestTo to(File file) {
-
+        public ScanRequest build() {
+            if (input == null) {
+                throw new NullPointerException("input can't be null");
+            }
+            if (output == null) {
+                output = new NullOutputStream();
+            }
+            return new ScanRequest(input, output, removeAfterScan);
         }
 
-        public ScanRequestTo to(OutputStream outputStream) {
-
-        }
-
-        ScanRequestFrom (File file, boolean removeAfterScan) {
-            this.from = file;
-            this.removeAfterScan = removeAfterScan;
-        }
-    }
-
-    class ScanRequestTo {
-
-        private final boolean removeAfterScan;
-        private final File from;
-
-        ScanRequestFrom (File file, boolean removeAfterScan) {
-            this.from = file;
-            this.removeAfterScan = removeAfterScan;
-        }
-
-       public ScanRequest build() {
-
-       }
     }
 
 
