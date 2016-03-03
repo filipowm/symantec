@@ -17,9 +17,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.springframework.util.Assert;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -47,6 +49,9 @@ public class SymantecAntivirusScanner implements AntivirusScanner {
 
     @Autowired
     public SymantecAntivirusScanner(AntivirusConfig antivirusConfig, List<AntivirusListener> antivirusListeners) {
+        Assert.notNull(antivirusConfig);
+        antivirusConfig.validate();
+
         this.antivirusConfig = antivirusConfig;
         eventDispatcher = new EventDispatcher(antivirusListeners);
         try {
@@ -62,7 +67,7 @@ public class SymantecAntivirusScanner implements AntivirusScanner {
     }
 
     private ScanEngine prepareScanEngine() throws ScanException {
-        LOG.error("ScanEngine configuration:\nhost: {}\nport: {}\nreadWriteTime: {}\nfailRetryTime: {}",
+        LOG.debug("ScanEngine configuration:\nhost: {}\nport: {}\nreadWriteTime: {}\nfailRetryTime: {}",
                 antivirusConfig.getHost(), antivirusConfig.getPort(), antivirusConfig.getReadWriteTime(), antivirusConfig.getFailRetryTime());
         ScanEngine.ScanEngineInfo engineInfo = new ScanEngine.ScanEngineInfo(antivirusConfig.getHost(), antivirusConfig.getPort());
         return ScanEngine.createScanEngine(Collections.singletonList(engineInfo), antivirusConfig.getReadWriteTime(), antivirusConfig.getFailRetryTime());
@@ -103,16 +108,16 @@ public class SymantecAntivirusScanner implements AntivirusScanner {
                 if (tmpFile != null) {
                     tmpFile.delete();
                 }
-        }
+            }
         }
         return Optional.fromNullable(result);
     }
 
     private class EventDispatcher {
-        private final List<AntivirusListener> antivirusListeners;
+        private final List<AntivirusListener> antivirusListeners = new ArrayList<>();
 
         private EventDispatcher(List<AntivirusListener> listeners) {
-            this.antivirusListeners = listeners;
+            this.antivirusListeners.addAll(listeners);
         }
 
         private void dispatch(AntivirusEvent event) {

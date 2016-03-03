@@ -1,12 +1,14 @@
 package com.mfilipo.symantec.spe.engine.config;
 
 import com.google.common.base.MoreObjects;
+import com.mfilipo.symantec.spe.utils.Validateable;
 import com.symantec.scanengine.api.Policy;
+import org.springframework.util.Assert;
 
 /**
  * Created by filipowm on 2016-02-25.
  */
-public class AntivirusConfig {
+public class AntivirusConfig implements Validateable {
 
     private String host;
     private int port;
@@ -84,5 +86,14 @@ public class AntivirusConfig {
                 .add("policy", policy)
                 .omitNullValues()
                 .toString();
+    }
+
+    @Override
+    public void validate() {
+        Assert.hasText(host, "Host must be provided");
+        Assert.isTrue(port > 0, "Port must be greater than 0");
+        Assert.notNull(policy);
+        Assert.isTrue(failRetryTime >= 0, "failRetryTime must be greater or equal 0");
+        Assert.isTrue(readWriteTime >= 0, "failRetryTime must be greater or equal 0");
     }
 }
