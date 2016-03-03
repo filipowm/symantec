@@ -9,6 +9,7 @@ import com.mfilipo.symantec.spe.event.ScanSuccessEvent;
 import com.mfilipo.symantec.spe.exception.AntivirusException;
 import com.mfilipo.symantec.spe.exception.ScanFailedException;
 import com.mfilipo.symantec.spe.utils.FileUtils;
+import com.mfilipo.symantec.spe.utils.Validateable;
 import com.symantec.scanengine.api.Result;
 import com.symantec.scanengine.api.ScanEngine;
 import com.symantec.scanengine.api.ScanException;
@@ -17,7 +18,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import org.springframework.util.Assert;
 
 import java.io.File;
 import java.io.IOException;
@@ -49,8 +49,7 @@ public class SymantecAntivirusScanner implements AntivirusScanner {
 
     @Autowired
     public SymantecAntivirusScanner(AntivirusConfig antivirusConfig, List<AntivirusListener> antivirusListeners) {
-        Assert.notNull(antivirusConfig);
-        antivirusConfig.validate();
+        Validateable.validate(antivirusConfig);
 
         this.antivirusConfig = antivirusConfig;
         eventDispatcher = new EventDispatcher(antivirusListeners);
@@ -80,6 +79,7 @@ public class SymantecAntivirusScanner implements AntivirusScanner {
 
     @Override
     public Optional<Result> scan(ScanRequest scanRequest) throws AntivirusException, IOException {
+        Validateable.validate(scanRequest);
         Result result = null;
         if(antivirusConfig.isEnabled()) {
 //            init();

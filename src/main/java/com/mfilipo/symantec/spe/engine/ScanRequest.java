@@ -2,28 +2,30 @@ package com.mfilipo.symantec.spe.engine;
 
 import com.google.common.base.MoreObjects;
 import com.mfilipo.symantec.spe.utils.FileUtils;
+import com.mfilipo.symantec.spe.utils.Validateable;
 import org.apache.commons.io.output.CountingOutputStream;
 import org.apache.commons.io.output.NullOutputStream;
+import org.springframework.util.Assert;
 
 import java.io.*;
 
 /**
  * Created by filipowm on 2016-03-01.
  */
-public final class ScanRequest {
+public final class ScanRequest implements Validateable {
 
-    private boolean removeAfterScan;
+    private boolean cleanupAfterScan;
     private File input;
     private CountingOutputStream output;
 
-    private ScanRequest(File input, OutputStream output, boolean removeAfterScan) {
+    private ScanRequest(File input, OutputStream output, boolean cleanupAfterScan) {
         this.input = input;
         this.output = new CountingOutputStream(output);
-        this.removeAfterScan = removeAfterScan;
+        this.cleanupAfterScan = cleanupAfterScan;
     }
 
-    public boolean isRemoveAfterScan() {
-        return removeAfterScan;
+    public boolean isCleanupAfterScan() {
+        return cleanupAfterScan;
     }
 
     public File getInput() {
@@ -44,6 +46,11 @@ public final class ScanRequest {
 
     public static ScanRequestBuilder builder() {
         return new ScanRequestBuilder();
+    }
+
+    @Override
+    public void validate() {
+        Assert.notNull(input);
     }
 
     static class ScanRequestBuilder {
@@ -98,9 +105,6 @@ public final class ScanRequest {
         }
 
         public ScanRequest build() {
-            if (input == null) {
-                throw new NullPointerException("input can't be null");
-            }
             if (output == null) {
                 output = new NullOutputStream();
             }
@@ -115,7 +119,7 @@ public final class ScanRequest {
                 .add("inputFile", input.getAbsolutePath())
                 .add("inputSize", getInputSize())
                 .add("outputSize", getOutpusSize())
-                .add("removeAfterScan", removeAfterScan)
+                .add("cleanupAfterScan", cleanupAfterScan)
                 .omitNullValues()
                 .toString();
     }
