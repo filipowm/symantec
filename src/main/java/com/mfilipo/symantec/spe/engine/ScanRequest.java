@@ -111,7 +111,6 @@ public final class ScanRequest {
 
     @Override
     public String toString() {
-        CountingOutputStream cos = new CountingOutputStream(output);
         return MoreObjects.toStringHelper(this)
                 .add("inputFile", input.getAbsolutePath())
                 .add("inputSize", getInputSize())
