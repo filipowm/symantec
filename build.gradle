@@ -5,7 +5,9 @@ buildscript {
 }
 
 apply plugin: 'java'
+apply plugin: 'groovy'
 apply plugin: 'idea'
+
 
 jar {
 	baseName = 'sep'
@@ -31,36 +33,23 @@ dependencies {
 	compile 'commons-io:commons-io:2.4'
 	compile 'org.slf4j:slf4j-api:1.7.16'
 	compile 'com.google.guava:guava:19.0'
-	compile 'io.reactivex:rxjava:1.1.1'
 	compile fileTree(dir: 'lib', include: ['*.jar'])
 
+	testCompile	'junit:junit:4.12'
+	testCompile 'org.codehaus.groovy:groovy-all:2.4.4'
+	testCompile("org.spockframework:spock-core:1.0-groovy-2.4") {
+		exclude module: "groovy-all"
+	}
+
+
 }
 
-task wrapper(type: Wrapper) {
-	gradleVersion = '2.9'
-}
+//task wrapper(type: Wrapper) {
+//	gradleVersion = '2.9'
+//}
 idea {
-
 	module {
-		//if for some reason you want to add an extra sourceDirs
-		sourceDirs += file('lib')
-
-		//and some extra dirs that should be excluded by IDEA
-		excludeDirs += file('some-extra-exclude-dir')
-
-		//if you prefer different SDK than the one inherited from IDEA project
 		jdkName = '1.8'
-
-		//if you need to put 'provided' dependencies on the classpath
 		scopes.COMPILE.plus += [ configurations.compile ]
-
-		//if 'content root' (as IDEA calls it) of the module is different
-//		contentRoot = file('my-module-content-root')
-
-		//if you love browsing Javadoc
-		downloadJavadoc = true
-
-		//and hate reading sources :)
-		downloadSources = true
 	}
 }
