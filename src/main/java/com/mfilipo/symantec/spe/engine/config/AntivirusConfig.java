@@ -8,7 +8,7 @@ import org.springframework.util.Assert;
 /**
  * Created by filipowm on 2016-02-25.
  */
-public class AntivirusConfig implements Validateable {
+public final class AntivirusConfig implements Validateable {
 
     private String host;
     private int port;
