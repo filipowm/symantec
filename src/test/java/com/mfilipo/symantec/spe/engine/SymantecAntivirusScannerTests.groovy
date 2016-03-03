@@ -2,6 +2,13 @@ package com.mfilipo.symantec.spe.engine
 
 import com.mfilipo.symantec.spe.engine.config.AntivirusConfig
 import com.mfilipo.symantec.spe.event.AntivirusListener
+import com.mfilipo.symantec.spe.event.ScanFailureEvent
+import com.mfilipo.symantec.spe.event.ScanSuccessEvent
+import com.mfilipo.symantec.spe.exception.ScanFailedException
+import com.symantec.scanengine.api.ErrorCode
+import com.symantec.scanengine.api.Result
+import com.symantec.scanengine.api.ScanException
+import com.symantec.scanengine.api.StreamScanRequest
 import spock.lang.Specification
 
 /**
@@ -14,9 +21,25 @@ class SymantecAntivirusScannerTests extends Specification {
         new AntivirusConfig('test', 1)
     }
 
+    private static mockScanner() {
+        new SymantecAntivirusScanner(mockConfig())
+    }
+
     private static mockScanRequest() {
+        mockScanRequest('test')
+    }
+
+    private static mockScanRequest(String from) {
         ScanRequest.builder()
-                .from('test')
+                .from(from.bytes)
+                .removeAfterScan(true)
+                .build()
+    }
+
+    private static mockScanRequest(String from, String to) {
+        ScanRequest.builder()
+                .from(from.bytes)
+                .to(to)
                 .removeAfterScan(true)
                 .build()
     }
@@ -75,6 +98,48 @@ class SymantecAntivirusScannerTests extends Specification {
         then:
         ! result.present
         noExceptionThrown()
+    }
+
+    void 'scan failed with exception'() {
+        given:
+        def scanner = mockScanner()
+        def eventDispatcher = Mock(SymantecAntivirusScanner.EventDispatcher, constructorArgs: [[]]) {
+            dispatch(_) >> "ok"
+        }
+        scanner.@eventDispatcher = eventDispatcher
+        def scanRequest = mockScanRequest()
+
+        StreamScanRequest.metaClass.scanFile = { throw new ScanException('test', ErrorCode.ERROR_FILE_CREATION)}
+
+        when:
+        scanner.scan(scanRequest)
+
+        then:
+        thrown ScanFailedException
+        1 * eventDispatcher.dispatch(_ as ScanFailureEvent)
+        ! scanRequest.getInput().exists()
+    }
+
+    void 'scan executed with result'() {
+        given:
+        def scanner = mockScanner()
+        def eventDispatcher = Mock(SymantecAntivirusScanner.EventDispatcher, constructorArgs: [[]]) {
+            dispatch(_) >> "ok"
+        }
+        scanner.@eventDispatcher = eventDispatcher
+        def scanRequest = mockScanRequest()
+
+        StreamScanRequest.metaClass.scanFile = { return new Result()}
+
+        when:
+        Optional<Result> result = scanner.scan(scanRequest)
+
+        then:
+        noExceptionThrown()
+        1 * eventDispatcher.dispatch(_ as ScanSuccessEvent)
+        ! scanRequest.getInput().exists()
+        result.present
+
     }
 
 }

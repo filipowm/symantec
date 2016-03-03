@@ -35,7 +35,7 @@ public class SymantecAntivirusScanner implements AntivirusScanner {
     private static final Logger LOG = LoggerFactory.getLogger(SymantecAntivirusScanner.class);
     private final AntivirusConfig antivirusConfig;
     private final ScanEngine engine;
-    private final EventDispatcher eventDispatcher;
+    private EventDispatcher eventDispatcher;
 
     @Autowired
     public SymantecAntivirusScanner(AntivirusConfig antivirusConfig) {
@@ -93,7 +93,6 @@ public class SymantecAntivirusScanner implements AntivirusScanner {
                         antivirusConfig.getPolicy(),
                         antivirusConfig.isExtendedInfo()
                 );
-
                 result = sr.scanFile();
                 eventDispatcher.dispatch(new ScanSuccessEvent(scanRequest, result));
             } catch (ScanException | IOException e) {
@@ -102,7 +101,7 @@ public class SymantecAntivirusScanner implements AntivirusScanner {
                 eventDispatcher.dispatch(new ScanFailureEvent(scanRequest, exception));
                 throw exception;
             } finally {
-                if (scanRequest.isRemoveAfterScan()) {
+                if (scanRequest.isCleanupAfterScan()) {
                     scanRequest.getInput().delete();
                 }
                 if (tmpFile != null) {
@@ -113,14 +112,14 @@ public class SymantecAntivirusScanner implements AntivirusScanner {
         return Optional.fromNullable(result);
     }
 
-    private class EventDispatcher {
+    private static class EventDispatcher {
         private final List<AntivirusListener> antivirusListeners = new ArrayList<>();
 
-        private EventDispatcher(List<AntivirusListener> listeners) {
+        EventDispatcher(List<AntivirusListener> listeners) {
             this.antivirusListeners.addAll(listeners);
         }
 
-        private void dispatch(AntivirusEvent event) {
+        void dispatch(AntivirusEvent event) {
             for (AntivirusListener listener : antivirusListeners) {
                 listener.onApplicationEvent(event);
             }
