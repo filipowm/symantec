@@ -1,22 +1,17 @@
 package com.mfilipo.symantec.spe.event;
 
-import com.mfilipo.symantec.spe.engine.ScanRequest;
 import org.springframework.context.ApplicationEvent;
 
 /**
  * Created by filipowm on 2016-02-25.
  */
 public abstract class AntivirusEvent extends ApplicationEvent  {
-
-    public AntivirusEvent(ScanRequest source) {
+    /**
+     * Create a new ApplicationEvent.
+     *
+     * @param source the object on which the event initially occurred (never {@code null})
+     */
+    public AntivirusEvent(Object source) {
         super(source);
-    }
-
-    public ScanRequest getSource() {
-        return (ScanRequest) source;
-    }
-
-    public ScanRequest getScanRequest() {
-        return getSource();
     }
 }

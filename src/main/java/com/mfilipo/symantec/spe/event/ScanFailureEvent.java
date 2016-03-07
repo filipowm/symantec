@@ -7,7 +7,7 @@ import com.symantec.scanengine.api.ErrorCode;
 /**
  * Created by filipowm on 2016-03-01.
  */
-public class ScanFailureEvent extends AntivirusEvent {
+public class ScanFailureEvent extends AntivirusScanEvent {
 
     private final ScanFailedException exception;
 

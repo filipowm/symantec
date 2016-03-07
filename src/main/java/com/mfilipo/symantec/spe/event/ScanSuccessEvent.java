@@ -11,7 +11,7 @@ import java.util.List;
 /**
  * Created by filipowm on 2016-03-01.
  */
-public class ScanSuccessEvent extends AntivirusEvent {
+public class ScanSuccessEvent extends AntivirusScanEvent {
 
     private final Result result;
 
