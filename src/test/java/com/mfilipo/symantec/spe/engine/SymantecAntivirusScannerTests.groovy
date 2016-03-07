@@ -117,7 +117,7 @@ class SymantecAntivirusScannerTests extends Specification {
         then:
         thrown ScanFailedException
         1 * eventDispatcher.dispatch(_ as ScanFailureEvent)
-        ! scanRequest.getInput().exists()
+        ! scanRequest.getSource().exists()
     }
 
     void 'scan executed with result'() {
@@ -129,7 +129,9 @@ class SymantecAntivirusScannerTests extends Specification {
         scanner.@eventDispatcher = eventDispatcher
         def scanRequest = mockScanRequest()
 
-        StreamScanRequest.metaClass.scanFile = { return new Result()}
+        StreamScanRequest.metaClass.scanFile = {
+            return new Result()
+        }
 
         when:
         Optional<Result> result = scanner.scan(scanRequest)
@@ -137,7 +139,7 @@ class SymantecAntivirusScannerTests extends Specification {
         then:
         noExceptionThrown()
         1 * eventDispatcher.dispatch(_ as ScanSuccessEvent)
-        ! scanRequest.getInput().exists()
+        ! scanRequest.getSource().exists()
         result.present
 
     }

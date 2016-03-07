@@ -54,9 +54,10 @@ public class SymantecAntivirusScanner implements AntivirusScanner {
         this.antivirusConfig = antivirusConfig;
         eventDispatcher = new EventDispatcher(antivirusListeners);
         try {
-            LOG.debug("Initializing Symantec ScanEngine");
+            LOG.error("Initializing Symantec ScanEngine...");
+            LOG.error(antivirusConfig.toString());
             this.engine = prepareScanEngine();
-            LOG.debug("Symantec ScanEngine initialized");
+            LOG.error("Symantec ScanEngine initialized!");
         } catch (ScanException e) {
             LOG.error("Scan engine initialization failed with parameters:\nhost: {}\nport: {}\nreadWriteTime: {}\nfailRetryTime: {}",
                     antivirusConfig.getHost(), antivirusConfig.getPort(), antivirusConfig.getReadWriteTime(), antivirusConfig.getFailRetryTime());
@@ -87,12 +88,13 @@ public class SymantecAntivirusScanner implements AntivirusScanner {
             try {
                 tmpFile = FileUtils.createTempFile();
                 StreamScanRequest sr = engine.createStreamScanRequest(
-                        scanRequest.getInput().getAbsolutePath(),
+                        scanRequest.getSource().toString(),
                         tmpFile.getAbsolutePath(),
                         scanRequest.getOutput(),
                         antivirusConfig.getPolicy(),
                         antivirusConfig.isExtendedInfo()
                 );
+                scanRequest.getSource().write(sr);
                 result = sr.scanFile();
                 eventDispatcher.dispatch(new ScanSuccessEvent(scanRequest, result));
             } catch (ScanException | IOException e) {
@@ -102,7 +104,7 @@ public class SymantecAntivirusScanner implements AntivirusScanner {
                 throw exception;
             } finally {
                 if (scanRequest.isCleanupAfterScan()) {
-                    scanRequest.getInput().delete();
+                    scanRequest.getSource().cleanup();
                 }
                 if (tmpFile != null) {
                     tmpFile.delete();

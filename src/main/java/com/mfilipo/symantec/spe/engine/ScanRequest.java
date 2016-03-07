@@ -1,7 +1,10 @@
 package com.mfilipo.symantec.spe.engine;
 
 import com.google.common.base.MoreObjects;
-import com.mfilipo.symantec.spe.utils.FileUtils;
+import com.mfilipo.symantec.spe.engine.source.ByteArraySource;
+import com.mfilipo.symantec.spe.engine.source.FileSource;
+import com.mfilipo.symantec.spe.engine.source.InputStreamSource;
+import com.mfilipo.symantec.spe.engine.source.Source;
 import com.mfilipo.symantec.spe.utils.Validateable;
 import org.apache.commons.io.output.CountingOutputStream;
 import org.apache.commons.io.output.NullOutputStream;
@@ -15,11 +18,11 @@ import java.io.*;
 public final class ScanRequest implements Validateable {
 
     private boolean cleanupAfterScan;
-    private File input;
+    private Source source;
     private CountingOutputStream output;
 
-    private ScanRequest(File input, OutputStream output, boolean cleanupAfterScan) {
-        this.input = input;
+    private ScanRequest(Source source, OutputStream output, boolean cleanupAfterScan) {
+        this.source = source;
         this.output = new CountingOutputStream(output);
         this.cleanupAfterScan = cleanupAfterScan;
     }
@@ -28,12 +31,8 @@ public final class ScanRequest implements Validateable {
         return cleanupAfterScan;
     }
 
-    public File getInput() {
-        return input;
-    }
-
-    public long getInputSize() {
-        return input.length();
+    public Source getSource() {
+        return source;
     }
 
     public long getOutpusSize() {
@@ -50,39 +49,35 @@ public final class ScanRequest implements Validateable {
 
     @Override
     public void validate() {
-        Assert.notNull(input);
+        Assert.notNull(source);
     }
 
     static class ScanRequestBuilder {
 
-        private boolean removeAfterScan = false;
-        private boolean blockRemoveAfterScan = false;
-        private File input;
+        private boolean cleanupAfterScan = false;
+        private Source source;
         private OutputStream output;
 
         private ScanRequestBuilder() { }
 
-        public ScanRequestBuilder from(String path) {
-            return from(new File(path));
+        public ScanRequestBuilder from(String path) throws FileNotFoundException {
+            this.source = new FileSource(path);
+            return this;
         }
 
-        public ScanRequestBuilder from(File file) {
-            this.input = file;
+        public ScanRequestBuilder from(File file) throws FileNotFoundException {
+            this.source = new FileSource(file);
             return this;
         }
 
         public ScanRequestBuilder from(InputStream inputStream) throws IOException {
-            if (! blockRemoveAfterScan) {
-                removeAfterScan = true;
-            }
-            return from(FileUtils.toTempFile(inputStream));
+            this.source = new InputStreamSource(inputStream);
+            return this;
         }
 
         public ScanRequestBuilder from(byte[] bytes) throws IOException {
-            if (! blockRemoveAfterScan) {
-                removeAfterScan = true;
-            }
-            return from(FileUtils.toTempFile(bytes));
+            this.source = new ByteArraySource(bytes);
+            return this;
         }
 
         public ScanRequestBuilder to(String path) throws FileNotFoundException {
@@ -99,8 +94,7 @@ public final class ScanRequest implements Validateable {
         }
 
         public ScanRequestBuilder removeAfterScan(boolean removeAfterScan) {
-            this.removeAfterScan = removeAfterScan;
-            this.blockRemoveAfterScan = true;
+            this.cleanupAfterScan = removeAfterScan;
             return this;
         }
 
@@ -108,7 +102,7 @@ public final class ScanRequest implements Validateable {
             if (output == null) {
                 output = new NullOutputStream();
             }
-            return new ScanRequest(input, output, removeAfterScan);
+            return new ScanRequest(source, output, cleanupAfterScan);
         }
 
     }
@@ -116,8 +110,8 @@ public final class ScanRequest implements Validateable {
     @Override
     public String toString() {
         return MoreObjects.toStringHelper(this)
-                .add("inputFile", input.getAbsolutePath())
-                .add("inputSize", getInputSize())
+                .add("inputFile", source.toString())
+                .add("inputSize", source.length())
                 .add("outputSize", getOutpusSize())
                 .add("cleanupAfterScan", cleanupAfterScan)
                 .omitNullValues()
